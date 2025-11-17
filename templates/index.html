@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚙️ Sistema de Otimização de Corte Contínuo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>⚙️ Sistema de Otimização de Corte Contínuo</h1>
+            <p class="subtitle">CNC / Laser / Usinagem - Ciclos Eulerianos</p>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <!-- Modo de Operação -->
+                <section class="card">
+                    <h2>🔧 Modo de Operação</h2>
+                    <div class="mode-buttons">
+                        <button id="mode-point" class="mode-btn active" data-mode="point">
+                            📍 Pontos de Corte
+                        </button>
+                        <button id="mode-edge" class="mode-btn" data-mode="edge">
+                            ✂️ Trajetórias
+                        </button>
+                    </div>
+                    <div class="mode-indicator">
+                        <span id="mode-text">Modo: Definir Pontos</span>
+                    </div>
+                </section>
+
+                <!-- Adicionar Ponto -->
+                <section class="card">
+                    <h2>📍 Adicionar Ponto</h2>
+                    <div class="form-group">
+                        <label>ID:</label>
+                        <input type="text" id="point-id" placeholder="Auto">
+                    </div>
+                    <div class="form-group">
+                        <label>X (mm):</label>
+                        <input type="number" id="point-x" step="0.1" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Y (mm):</label>
+                        <input type="number" id="point-y" step="0.1" placeholder="0">
+                    </div>
+                    <button class="btn btn-primary" onclick="adicionarPontoManual()">
+                        ➕ Adicionar
+                    </button>
+                </section>
+
+                <!-- Conectar Pontos -->
+                <section class="card">
+                    <h2>✂️ Conectar Pontos</h2>
+                    <div class="form-group">
+                        <label>Ponto 1:</label>
+                        <select id="edge-from">
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Ponto 2:</label>
+                        <select id="edge-to">
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="adicionarTrajetoria()">
+                        🔗 Conectar
+                    </button>
+                </section>
+
+                <!-- Parâmetros -->
+                <section class="card">
+                    <h2>⚙️ Parâmetros</h2>
+                    <div class="form-group">
+                        <label>Velocidade (mm/min):</label>
+                        <input type="number" id="velocidade" value="100" step="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Tempo Setup (min):</label>
+                        <input type="number" id="tempo-setup" value="0.5" step="0.1">
+                    </div>
+                </section>
+
+                <!-- Ações -->
+                <section class="card">
+                    <h2>🎯 Ações</h2>
+                    <button class="btn btn-success btn-block" onclick="otimizar()">
+                        🚀 Otimizar Caminho
+                    </button>
+                    <button id="btn-animar" class="btn btn-warning btn-block" onclick="animarCaminho()" style="display: none;">
+                        ▶️ Animar Corte
+                    </button>
+                    <button id="btn-parar-animacao" class="btn btn-secondary btn-block" onclick="pararAnimacao()" style="display: none;">
+                        ⏹️ Parar Animação
+                    </button>
+                    <button id="btn-excluir-ponto" class="btn btn-danger btn-block" onclick="excluirPontoSelecionado()" style="display: none;">
+                        🗑️ Excluir Ponto Selecionado
+                    </button>
+                    <button class="btn btn-danger btn-block" onclick="limparProjeto()">
+                        🗑️ Limpar Tudo
+                    </button>
+                </section>
+
+                <!-- Exemplos -->
+                <section class="card">
+                    <h2>📦 Exemplos</h2>
+                    <button class="btn btn-secondary btn-block" onclick="carregarExemplo('retangular')">
+                        ⬜ Placa Retangular
+                    </button>
+                    <button class="btn btn-secondary btn-block" onclick="carregarExemplo('estrela')">
+                        ⭐ Peça Estrela
+                    </button>
+                    <button class="btn btn-secondary btn-block" onclick="carregarExemplo('grade')">
+                        🔷 Grade
+                    </button>
+                </section>
+
+                <!-- Status -->
+                <section class="card">
+                    <h2>📊 Status</h2>
+                    <div id="status-info">
+                        <p>Pontos: <span id="num-points">0</span></p>
+                        <p>Trajetórias: <span id="num-edges">0</span></p>
+                        <p id="status-text" class="status-waiting">Aguardando...</p>
+                    </div>
+                    <div id="tempo-info" class="tempo-info hidden"></div>
+                </section>
+            </aside>
+
+            <!-- Canvas Area -->
+            <main class="canvas-area">
+                <div class="canvas-container">
+                    <canvas id="canvas"></canvas>
+                    <div class="canvas-overlay">
+                        <div id="canvas-hint" class="hint">
+                            Clique para adicionar pontos de corte
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Results Panel -->
+        <div id="results-panel" class="results-panel hidden">
+            <div class="results-header">
+                <h2>📋 Programa CNC Gerado</h2>
+                <button class="btn-close" onclick="fecharResultados()">×</button>
+            </div>
+            <div class="results-content">
+                <div class="results-stats" id="results-stats"></div>
+                <div class="code-block">
+                    <pre id="cnc-code"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
+
